@@ -1,0 +1,35 @@
+= colcat
+
+Colored-concatenate (colcat) is essentially a human language language server protocol (LSP). The goal of colcat
+is to provide visual cues that can make reading human languages easier by (at the base level) modifying the 
+text coloring and (in more capable text viewers) modifying the font style, background color, size, orientation, and
+other such percievable visual properties. The underlying concept is to improve the _saliency_ of the text, which
+currently is modelled in the human visual system as a combination of visual properties _intensity_, 
+_orientation_, and _color-opponency_. _intensity_ is how bright or dark something is, _orientation_ is how sharp changes
+in direction lines are (simplifies font shape), and _color-opponency_ is the maximum color difference between a letter
+and its background (red-green and yellow-blue are opposite colors and therefore max color-opponency).
+This is something that is already done in a rudimentary capacity through
+highlighting text, making it bold, changing text color, making it all-caps, italicizing, and a variety of other
+text-styling techniques. By having a common color-pallete, it is possible to associate color with text and 
+more easily identify words of interest.
+
+This app was inspired by `bat`.
+
+== Usage
+
+All colors used are CSS colors, so when you're defining config colors they should be CSS parsable color text.
+
+TODO
+
+== TODO
+
+* Distinguish which color palettes are lacking red-green color-opponency for those who are red-green blind.
+** Include palettes that have other forms of color blindness.
+* Animated-text color, size, etc, in order to increase saliency.
+* `tachyonfx::fx::translate_buf` for smooth scrolling under `animate` feature flag.
+* turn `process_text` into an async task/thread so that main thread isn't blocked and user
+is capable of quitting the program gracefully if it hangs for whatever reason
+* `pdf` feature to open a PDF file, colorize text, and save as a colorized PDF output file.
+* `html` feature to open & colorize a text file, and render it as colorized text in an html file.
+* `webapp` feature to open & colorize a text file, and serve an interactive form of it as 
+a website on a local html server. Probably through leptos SSR.

@@ -1,0 +1,54 @@
+The Central Nervous System (CNS) is an organ dedicated to collecting information from sensory
+systems, processing information, persistent storage and recollection of information, pattern 
+recognition, and controlling bodily functions to control internal biological
+systems and manipulate the environment external to the organism. It is mostly composed of a few
+types of cells, primarily neurons, astrocytes, microglia, oligodendrocytes, pericytes, and
+ependymyocytes. Neurons play the most important role in the CNS by converting sensory information
+into short-lived quantal fluctuations in electrochemical potential called action potentials and 
+more permanent changes to inter-neural signaling connections called synapses. Electrical synapses
+are gap junctions between neurons, allowing ion flow directly between their cytoplasm. Chemical synapse 
+are primarily mono-directional podia-shaped processes extending from neuronal plasma membranes, where one
+is transmitting through release of chemicals and another is receiving through signal transduction
+by receptors that are activated by coming to contact with the aforementioned released chemical. 
+The other cell types are all forms of glial cells, originally referring to the metaphorical glue which holds together
+the neurons in the brain cite:[kettenmann_concept_2025]. Astrocytes are the most prevalent glial subtype cite:[freeman_evolving_2013], 
+named after their morphological similarities to the shape of a star cite:[verkhratsky_physiology_2018]. Classically they are thought of a 
+cell type that existed solely to support neuron health, however they have to be known as 
+cells which can directly influence and support neuronal activity in addition to their role in
+maintaining neurophysological homeostasis. Chemical synapses typically have a third 
+process in addition to the transmitting pre-synaptic and the receiving post-synaptic 
+neuronal end belonging to astrocytes. Astrocytes also send out processes that form a water-tight
+barrier preventing exposure of the CNS to peripheral elements circulating through the body in
+vasculature. Governing these astrocytic physiological processes is calcium signaling. Much like the transistor,
+calcium is separated from cytosol by both the plasma membrane and the endoplasmic reticulum membrane,
+and respectively act as gates for two different kinds of calcium signaling modalities. Calcium
+derived from the exterior is in near-infinite supply, whereas calcium deriving from endoplasmic
+reticulum is limited and requires refilling through a process called store operated calcium
+entry (SOCE). Disrupting calcium signaling in astrocytes results in changes in the aforementioned
+physiological processed they are tasked with. The impact can be seen in changes to neuronal 
+activity, tying astrocyte calcium directly to neural network function. This effect is pronounced
+in how astrocytes react to the innate and ubiquitous response to abnormal shifts in physiological
+environment called inflammation. And, although the CNS is immune
+privileged, situations arise in which peripheral pathogens and blunt trauma or deprivation
+of oxygen enter the CNS to generate an inflammatory response. Astrocytes, like all cells 
+in the body, display marked changes to their behavior in response to pathogens and 
+physical injury. Lipopolysaccharide (LPS) is a molecule that mimicks the unique membrane property
+of bacteria to have lipid molecules containing sugar carbohydrate elements. Its presence in
+tissues reliably generates an inflammatory response, of which the CNS is no exception to. 
+LPS-induction in the CNS leads to measurable changes in astrocyte calcium signaling,
+and likewise changes to astrocyte calcium signaling results in changes to the astrocytic response
+to inflammation. Not only in calcium signaling done conferred by endoplasmic reticulum stores,
+but also in maintaining the calcium within those stores. These observations however are primarily
+in murine models, and astrocyte physiology is known to differ signficantly between species and
+the impact of calcium in one specie's astrocytic process may differ from another's. Induced 
+pluripotent stem cell (iPSC) models mimicking embryonic stem cells (ESCs) have been employed to 
+examine more clinically relevant human physiology through artificial maturation named
+differentiation. A preponderance of cell types have been derived from iPSCs, ranging from accurate
+models to whole organisms through tetraploid complementation capable of reproduction. One such
+protocol exists for producing cells bearing strong similarity with human primary fetal astrocytes
+and is the human model employed in this study to examine the role of inflammation and calcium store
+homeostasis. First, the iPSC-derived human astrocytes were examined for biomarkers and 
+their ability to perform SOCE was characterized. And then their transcriptomes were 
+characterized under LPS-induction and then in combination with SOCE-inhibition to reveal
+changes in expression of subsets of signaling pathways involved in inflammation, depression, 
+maintainance of neural network structure, and regulated cell death. 
