@@ -7,7 +7,7 @@ use crate::{
     },
     errors::ColcatError,
     renderer::KeyComboMode,
-    types::{params::ColcatParams, state::semantics::SemanticState},
+    types::params::ColcatParams,
 };
 
 #[derive(Debug)]
@@ -145,6 +145,8 @@ impl TextState {
         let mut needs_processing = false;
         #[cfg(feature = "semantics")]
         {
+            use crate::types::state::semantics::SemanticState;
+
             needs_processing |= self
                 .semantic_state
                 .as_ref()
