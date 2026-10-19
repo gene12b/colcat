@@ -1,6 +1,9 @@
+use std::fmt::format;
+
 #[cfg(feature = "semantics")]
 use candle_transformers::models::mimi::candle;
 use color_eyre::eyre::bail;
+use ratatui_notifications::{Level, Notification, Notifications, notifications};
 use thiserror::Error;
 use tracing::error;
 
@@ -32,6 +35,14 @@ pub enum ColcatError {
     BadConversion(String, String),
     #[error("{0}")]
     StrumParse(#[from] strum::ParseError),
+    #[error("Need to provide an input file to read!")]
+    MissingInputFile,
+    #[error("Unimplemented: {0}")]
+    Unimplemented(String),
+    #[error("{0}")]
+    ParseCommand(#[from] ParseCommandError),
+    #[error("{0}")]
+    Notificatino(#[from] notifications::NotificationError),
 }
 
 #[cfg(feature = "semantics")]
@@ -55,6 +66,18 @@ pub enum ColcatSemanticsError {
     SelectedButNoParams,
     #[error("Phrase {0} is missing a score in calculated semantics scores!")]
     PhraseMissingScore(String),
+    #[error("Semantics transformer is not yet initialized, cannot update")]
+    Uninitialized,
+}
+
+#[derive(Debug, Error)]
+pub enum ParseCommandError {
+    #[error("Empty command provided, no command to parse")]
+    EmptyCommand,
+    #[error(
+        "Command '{0}' is not recognized as a command. Type 'help' in order to see available commands."
+    )]
+    UnsupportedCommand(String),
 }
 
 impl From<serde_json::Error> for ColcatError {
@@ -80,6 +103,10 @@ pub enum ColcatSerdeError {
 }
 pub trait UnwrapFallible {
     fn map_err_fallible(self) -> Result<(), color_eyre::Report>;
+    fn map_err_fallible_notify(
+        self,
+        notifications: &mut Notifications,
+    ) -> Result<(), color_eyre::Report>;
 }
 
 impl UnwrapFallible for Result<(), ColcatError> {
@@ -89,7 +116,36 @@ impl UnwrapFallible for Result<(), ColcatError> {
             Err(err) => match err.fallible() {
                 ColcatErrorFallibility::Fallible(err) => {
                     //print error
+                    //eprintln!("{err:#?}");
                     error!("{err:#?}");
+                    Ok(())
+                }
+                ColcatErrorFallibility::Infallible(err) => {
+                    //crash and burn no survivors
+                    bail!(err);
+                }
+            },
+        }
+    }
+    fn map_err_fallible_notify(
+        self,
+        notifications: &mut Notifications,
+    ) -> Result<(), color_eyre::Report> {
+        match self {
+            Ok(()) => Ok(()),
+            Err(err) => match err.fallible() {
+                ColcatErrorFallibility::Fallible(err) => {
+                    //print error
+                    //eprintln!("{err:#?}");
+                    let error_text = format!("{err}");
+                    let notification = Notification::new(error_text.clone())
+                        .title("Error")
+                        .level(Level::Error)
+                        .anchor(notifications::Anchor::TopCenter)
+                        .build()
+                        .unwrap();
+                    notifications.add(notification).unwrap();
+                    error!(error_text);
                     Ok(())
                 }
                 ColcatErrorFallibility::Infallible(err) => {
@@ -104,7 +160,9 @@ impl UnwrapFallible for Result<(), ColcatError> {
 impl ColcatError {
     pub fn fallible(self) -> ColcatErrorFallibility {
         match self {
-            Self::Io(_) | Self::Renderer(_) => ColcatErrorFallibility::Fallible(self),
+            Self::Io(_) | Self::Renderer(_) | Self::Unimplemented(_) | Self::ParseCommand(_) => {
+                ColcatErrorFallibility::Fallible(self)
+            }
             other => ColcatErrorFallibility::Infallible(other),
         }
     }
@@ -119,4 +177,16 @@ pub enum ColcatErrorFallibility {
 pub enum RendererError {
     #[error("Tried to transition to searching phase while already in searching phase")]
     TriedSearchWhileSearching,
+}
+
+#[derive(Debug, Error)]
+pub enum ColcatErrorSend {
+    #[error("{0:?}")]
+    Colcat(String),
+}
+
+impl From<ColcatError> for ColcatErrorSend {
+    fn from(value: ColcatError) -> Self {
+        Self::Colcat(value.to_string())
+    }
 }

@@ -1,6 +1,7 @@
 use std::ops::{Add, Div, Mul, Sub};
 
 use itertools::Itertools;
+use schemars::{JsonSchema, json_schema};
 use serde::{Deserialize, Serialize};
 use vecstat::calc_traits::{Floatable, Zeroable};
 
@@ -15,6 +16,21 @@ pub type ColorColcat = ColorWrap;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, PartialOrd, Default, Clone)]
 pub struct ColorWrap(csscolorparser::Color);
+
+impl JsonSchema for ColorWrap {
+    fn schema_id() -> std::borrow::Cow<'static, str> {
+        concat!(module_path!(), "::ColorWrap").into()
+    }
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "ColorWrap".into()
+    }
+    fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        let _ = generator;
+        json_schema!({
+            "type": "css_color"
+        })
+    }
+}
 
 impl Add for ColorWrap {
     type Output = Self;
@@ -152,6 +168,12 @@ pub struct ColoredCharacter {
     pub character: char,
 }
 
+//#[derive(Debug, Serialize, Deserialize, Clone)]
+//pub struct CharacterColoring {
+//    pub fg_color: ColorColcat,
+//    pub bg_color: Option<ColorColcat>,
+//}
+
 pub trait SplitColoredCharacterLines {
     fn split_char(self, delimiter: char) -> Vec<Self>
     where
@@ -163,6 +185,22 @@ impl SplitColoredCharacterLines for Vec<ColoredCharacter> {
         self.split(|val| val.character == delimiter)
             .map(|val| val.to_vec())
             .collect_vec()
+    }
+}
+
+pub trait JoinColoredCharacterLines {
+    type Output;
+    fn join_char(self, delimiter: char) -> Self::Output;
+}
+
+impl JoinColoredCharacterLines for Vec<Vec<ColoredCharacter>> {
+    type Output = Vec<ColoredCharacter>;
+    fn join_char(self, delimiter: char) -> Self::Output {
+        self.join(&ColoredCharacter {
+            character: delimiter,
+            fg_color: ColorColcat::zero(),
+            bg_color: None,
+        })
     }
 }
 
@@ -197,7 +235,7 @@ impl ColoredCharacter {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, JsonSchema)]
 pub enum ColoringScheme {
     ForegroundOnly,
     BackgroundOnly,

@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use vecstat::{StatisticsUnorderedF32, calc_traits::Zeroable, partial::StatisticsOrderedPartial};
@@ -26,7 +27,7 @@ pub struct ColorParams {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, JsonSchema)]
 pub struct ColorParamsSerde {
     pub linguistic_coloring: LinguisticColoring,
     word_coloring_kind: WordColoringKindSerde,
@@ -56,13 +57,13 @@ impl TryFrom<ColorParamsSerde> for ColorParams {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, JsonSchema)]
 pub struct ExtraInterpolationConfig {
     fg_interpolation: Option<ColorInterpolation>,
     bg_interpolation: Option<ColorInterpolation>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, JsonSchema)]
 pub struct ColorInterpolation {
     amount: f32,
     target_color: ColorColcat,
@@ -76,59 +77,52 @@ impl ColorParams {
         utf_render_mode: &[UtfRenderMode],
         word_coloring_kind: &WordColoringKindVanilla,
     ) -> Result<Vec<ColoredCharacter>, ColcatError> {
-        let colors = match &self.linguistic_coloring {
-            LinguisticColoring::Words => {
-                let words = text.split_whitespace();
-
-                words
-                    .map(|word| {
-                        self.colorize_string(word, indexing, utf_render_mode, word_coloring_kind)
-                    })
-                    .collect::<Result<Vec<_>, _>>()?
-            }
-            LinguisticColoring::Sentences { delimiter } => {
-                let sentences = text.split(*delimiter);
-
-                sentences
-                    .filter(|val| !val.is_empty())
-                    .map(|val| {
-                        self.colorize_string(val, indexing, utf_render_mode, word_coloring_kind)
-                    })
-                    .collect::<Result<Vec<_>, _>>()?
-            }
-            LinguisticColoring::Characters => {
-                let characters = text.chars().map(|char_val| char_val.to_string());
-
-                characters
-                    .map(|val| {
-                        self.colorize_string(
-                            val.as_str(),
-                            indexing,
-                            utf_render_mode,
-                            word_coloring_kind,
-                        )
-                    })
-                    .collect::<Result<Vec<_>, _>>()?
-            }
-        };
-        let ret_vec = match &self.linguistic_coloring {
-            LinguisticColoring::Words => itertools::intersperse(
-                colors,
-                vec![ColoredCharacter::new(ColorWrap::zero(), None, ' ')],
-            )
-            .flatten()
-            .collect_vec(),
-            LinguisticColoring::Characters => colors.into_iter().flatten().collect_vec(),
-            LinguisticColoring::Sentences { delimiter } => itertools::intersperse(
-                colors,
-                vec![ColoredCharacter::new(ColorWrap::zero(), None, *delimiter)],
-            )
-            .flatten()
-            .collect_vec(),
-        };
+        let split_text = self.linguistic_coloring.split_text(text);
+        let colors = split_text
+            .into_iter()
+            .map(|val| {
+                self.colorize_string(val.as_str(), indexing, utf_render_mode, word_coloring_kind)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let ret_vec = self.linguistic_coloring.join_colchars(colors);
         Ok(ret_vec)
-        //Ok()
     }
+
+    //let colors = match &self.linguistic_coloring {
+    //    LinguisticColoring::Words => {
+    //        let words = text.split_whitespace();
+    //
+    //        words
+    //            .map(|word| {
+    //                self.colorize_string(word, indexing, utf_render_mode, word_coloring_kind)
+    //            })
+    //            .collect::<Result<Vec<_>, _>>()?
+    //    }
+    //    LinguisticColoring::Sentences { delimiter } => {
+    //        let sentences = text.split(*delimiter);
+    //
+    //        sentences
+    //            .filter(|val| !val.is_empty())
+    //            .map(|val| {
+    //                self.colorize_string(val, indexing, utf_render_mode, word_coloring_kind)
+    //            })
+    //            .collect::<Result<Vec<_>, _>>()?
+    //    }
+    //    LinguisticColoring::Characters => {
+    //        let characters = text.chars().map(|char_val| char_val.to_string());
+    //
+    //        characters
+    //            .map(|val| {
+    //                self.colorize_string(
+    //                    val.as_str(),
+    //                    indexing,
+    //                    utf_render_mode,
+    //                    word_coloring_kind,
+    //                )
+    //            })
+    //            .collect::<Result<Vec<_>, _>>()?
+    //    }
+    //};
 
     fn colorize_string(
         &self,

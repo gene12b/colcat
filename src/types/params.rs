@@ -1,6 +1,12 @@
-use std::{fs::File, io::Read, ops::Range, path::PathBuf};
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 use clap::Parser;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 //use tracing::debug;
@@ -29,13 +35,21 @@ use crate::{
 * */
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, JsonSchema)]
 pub struct ColcatParamsSerde {
     indexing: Option<IndexingScale>,
     utf_render_mode: Option<Vec<UtfRenderMode>>,
     word_coloring: Option<ColorParamsSerde>,
     #[cfg(feature = "semantics")]
     pub semantic_model_info: Option<SemanticsParamsSerde>,
+}
+
+impl ColcatParamsSerde {
+    pub fn try_from_path(path: impl AsRef<Path>) -> Result<Self, ColcatError> {
+        let mut reader = BufReader::new(File::open(path.as_ref())?);
+        let val = serde_json::from_reader(&mut reader)?;
+        Ok(val)
+    }
 }
 
 #[derive(Debug)]
@@ -53,12 +67,14 @@ impl ColcatParams {
         text: String,
         word_coloring_kind: &WordColoringKindVanilla,
     ) -> Result<Vec<ColoredCharacter>, ColcatError> {
-        self.coloring.colorize_text(
+        let mut text = self.coloring.colorize_text(
             text,
             &self.indexing,
             &self.utf_render_mode,
             word_coloring_kind,
-        )
+        )?;
+        //TODO: interpolate ColoredCharacters to fg and background values
+        Ok(text)
     }
 
     #[cfg(feature = "semantics")]
@@ -70,18 +86,24 @@ impl ColcatParams {
         //TODO: expand this to allow more than just coloring based on the first phrase
 
         let mut ret_chars = Vec::new();
+        use tracing::debug;
+
         use crate::errors::ColcatSemanticsError;
         let target_semantic = processed_semantics
             .first()
             .ok_or(ColcatSemanticsError::TargetTextCannotBeEmpty)
             .map_err(ColcatError::from)?;
+        //TODO: use predefined delimiter
         let sentences_raw = text.split(".");
+        //debug!("sentences_raw: {sentences_raw:?}");
         let sentences = text
             .split(".")
             .map(str::trim)
-            .map(|val| val.replace("\n", ""))
+            //.map(|val| val.replace("\n", ""))
+            .map(String::from)
             .filter(|val| !val.is_empty());
         for (sentence, sentence_raw) in sentences.zip(sentences_raw) {
+            debug!("sentence_raw: {sentence_raw:?}");
             use vecstat::calc_traits::Zeroable;
 
             use crate::color::ColorColcat;
@@ -97,6 +119,7 @@ impl ColcatParams {
                 &WordColoringKindVanilla::Uniform(color),
             )?;
             ret_sentence.push(ColoredCharacter::new(ColorColcat::zero(), None, '.'));
+            //ret_sentence.push(ColoredCharacter::new(ColorColcat::zero(), None, '\n'));
             ret_chars.append(&mut ret_sentence);
         }
         Ok(ret_chars)
@@ -109,7 +132,7 @@ impl ColcatParams {
 
 ///How do you want to map color palettes to
 ///the character space provided?
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 pub struct UtfRenderMode {
     charset: CharSet,
     exclusivity: Option<Exclusivity>,
@@ -153,7 +176,7 @@ impl UtfRenderMode {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, JsonSchema)]
 pub enum CharSet {
     AsciiUppercase,
     AsciiLowercase,
@@ -187,7 +210,7 @@ impl CharSet {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq, JsonSchema)]
 pub enum Exclusivity {
     #[default]
     Repeat,
@@ -268,10 +291,12 @@ pub struct ColcatArgs {}
 //This is for Tui rendering of text
 #[derive(Debug, Parser)]
 pub struct ColcatTuiArgs {
-    #[arg(num_args = 1, required = true)]
-    pub input_file: PathBuf,
+    #[arg(num_args = 0..=1)]
+    pub input_file: Option<PathBuf>,
     #[arg(short, long)]
     pub config: Option<PathBuf>,
     #[arg(short, long)]
     pub renderer: Option<RendererDiscriminants>,
+    #[arg(short, long)]
+    pub generate_config_schema: Option<PathBuf>,
 }

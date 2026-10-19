@@ -1,3 +1,4 @@
+pub mod comm;
 pub mod indexing;
 pub mod iter;
 pub mod params;

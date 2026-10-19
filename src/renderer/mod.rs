@@ -1,29 +1,33 @@
 #[cfg(feature = "pdf")]
 pub mod pdf;
 
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
 use crossterm::event::{self, Event, KeyEventKind};
 use itertools::Itertools;
+use palette::num::Clamp;
 use ratatui::{
     DefaultTerminal, Frame,
+    layout::Rect,
     style::Style,
     text::{Line, Span, Text},
-    widgets::{Block, Gauge, Paragraph, Widget, Wrap},
+    widgets::{Block, Gauge, Paragraph, Widget},
 };
+use ratatui_notifications::{Anchor, Animation, Level, Notification, Notifications};
 use strum::{AsRefStr, EnumDiscriminants, EnumIter, IntoEnumIterator, VariantNames};
 use tracing::debug;
 
-#[cfg(feature = "semantics")]
-use crate::color::semantics::ProcessedSemantics;
 use crate::{
-    color::{ColoredCharacter, ColoringScheme},
+    color::{ColoredCharacter, ColoringScheme, SplitColoredCharacterLines},
     errors::{ColcatError, UnwrapFallible},
     ratatui::event_handle::RatatuiKeyEventHandle,
     types::{
         IntoExt,
         params::ColcatParams,
-        state::{ColcatMode, ColcatState, TextState},
+        state::{
+            ColcatState,
+            //Notification
+        },
     },
 };
 
@@ -80,6 +84,7 @@ impl Renderer {
 #[derive(Debug)]
 pub struct RatatuiApp {
     pub state: ColcatState,
+    pub notifications: Notifications,
 }
 
 #[derive(Debug, Default)]
@@ -89,12 +94,24 @@ pub enum KeyComboMode {
     //Insert,
     Go,
     Search(SearchModePhase),
+    Command(CommandModePhase),
 }
 
 #[derive(Debug)]
 pub enum SearchModePhase {
     Typing(String),
     Searching { hits: Vec<usize>, hit_idx: usize },
+}
+
+#[derive(Debug)]
+pub enum CommandModePhase {
+    Typing(String),
+}
+
+impl Default for CommandModePhase {
+    fn default() -> Self {
+        Self::Typing(String::new())
+    }
 }
 
 impl Default for SearchModePhase {
@@ -108,6 +125,7 @@ impl From<char> for KeyComboMode {
         match value {
             'g' => Self::Go,
             '/' => Self::Search(Default::default()),
+            ':' => Self::Command(Default::default()),
             _ => Self::View,
         }
     }
@@ -117,57 +135,53 @@ impl RatatuiApp {
     pub fn new(text: String, params: ColcatParams) -> Result<Self, ColcatError> {
         Ok(Self {
             state: ColcatState::new(params, text)?,
+            notifications: Notifications::new(),
         })
     }
     fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<(), color_eyre::eyre::Report> {
         debug!("state: {:#?}", self.state);
-        //debug!(
-        //    "params json:\n{}",
-        //    serde_json::to_string_pretty(&self.params).unwrap()
-        //);
-        //debug!("current_text: {:#?}", self.current_text);
-        //debug!("processed_text(before): {:#?}", self.processed_text);
         while !self.state.should_exit() {
-            terminal.draw(|frame| self.draw(frame))?;
+            //debug!("main loop");
+            self.notifications.tick(Duration::from_millis(16));
+            terminal.draw(|frame| {
+                self.draw(frame);
+                self.notifications.render(frame, frame.area());
+            })?;
+            //debug!("main loop draw");
+
             if self.state.needs_processing() {
-                self.state.process_text().map_err_fallible()?;
+                debug!("needs_processing");
+                self.state
+                    .process_text()
+                    .map_err_fallible_notify(&mut self.notifications)?;
+                debug!("processed");
                 self.state.text_state.needs_processing = false;
+                //I think this is worth an immediate redraw
+                self.notifications.tick(Duration::from_millis(16));
+                terminal.draw(|frame| {
+                    self.draw(frame);
+                    self.notifications.render(frame, frame.area());
+                })?;
             }
-            //debug!("processed_text(after): {:#?}", self.processed_text);
-            self.handle_events().map_err_fallible()?;
+            self.handle_events()
+                .map_err_fallible_notify(&mut self.notifications)?;
         }
         Ok(())
     }
 
-    //fn process_text(&mut self, text: String) -> Result<(), ColcatError> {
-    //    //let current_text = &self.current_text;
-    //    let params = &self.params;
-    //    #[cfg(feature = "semantics")]
-    //    {
-    //        if let Some(model) = &self.params.semantic_model {
-    //            let processed =
-    //                model.infer(&text, &self.params.word_coloring.linguistic_coloring)?;
-    //            debug!("processed: {processed:?}");
-    //        }
-    //    }
-    //    let mut lines = Vec::new();
-    //    for line in text.lines() {
-    //        let line = params.colorize_text(line.to_string())?;
-    //        lines.push(line);
-    //    }
-    //    self.processed_text = lines;
-    //    Ok(())
-    //}
     fn handle_events(&mut self) -> Result<(), ColcatError> {
-        match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_press_event(key_event)?;
+        let timeout = Duration::from_millis(16);
+        if event::poll(timeout)? {
+            match event::read()? {
+                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                    self.handle_key_press_event(key_event)?;
+                }
+                Event::Key(key_event) if key_event.kind == KeyEventKind::Release => {
+                    //TODO: handle key combos like control, shift, etc
+                    //self.handle_key_release_event(key_event)
+                }
+                _ => {}
             }
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Release => {
-                //TODO: handle key combos like control, shift, etc
-                //self.handle_key_release_event(key_event)
-            }
-            _ => {}
         }
         Ok(())
     }
@@ -177,35 +191,55 @@ impl RatatuiApp {
     pub fn exit(&mut self) {
         self.state.display_state.exit = true;
     }
-    pub fn display_text<'a>(&self, processed_text: &[ColoredCharacter]) -> Line<'a> {
-        let spans = processed_text.iter().map(|colchar| {
-            let ColoredCharacter {
-                fg_color,
-                bg_color,
-                character,
-            } = colchar;
-            match self.state.text_state.params.coloring.coloring_scheme {
-                ColoringScheme::ForegroundOnly => Span::styled(
-                    String::from(*character),
-                    Style::default().fg(fg_color.inner().into_ext()),
-                ),
-                ColoringScheme::ForegroundAndBackground => Span::styled(
-                    String::from(*character),
-                    Style::default().fg(fg_color.inner().into_ext()).bg(bg_color
-                        .as_ref()
-                        .map(|val| val.inner().into_ext())
-                        .unwrap_or_default()),
-                ),
-                ColoringScheme::BackgroundOnly => Span::styled(
-                    String::from(*character),
-                    Style::default().bg(bg_color
-                        .as_ref()
-                        .map(|val| val.inner().into_ext())
-                        .unwrap_or_default()),
-                ),
-            }
-        });
-        Line::from_iter(spans)
+    pub fn show_notification(
+        &mut self,
+        notification_title: String,
+        notification_text: String,
+    ) -> Result<(), ColcatError> {
+        //self.state.notification = Some(Notification::new(notification_title, notification_text));
+        let notif = Notification::new(notification_text)
+            .title(notification_title)
+            .level(Level::Info)
+            .anchor(Anchor::TopCenter)
+            .animation(Animation::Slide)
+            .build()?;
+        self.notifications.add(notif)?;
+        Ok(())
+    }
+    pub fn display_text<'a>(&self, processed_text: &[ColoredCharacter]) -> Vec<Line<'a>> {
+        let mut ret_vec = Vec::new();
+        let split = processed_text.to_vec().split_char('\n');
+        for processed_text in split {
+            let spans = processed_text.iter().map(|colchar| {
+                let ColoredCharacter {
+                    fg_color,
+                    bg_color,
+                    character,
+                } = colchar;
+                match self.state.text_state.params.coloring.coloring_scheme {
+                    ColoringScheme::ForegroundOnly => Span::styled(
+                        String::from(*character),
+                        Style::default().fg(fg_color.inner().into_ext()),
+                    ),
+                    ColoringScheme::ForegroundAndBackground => Span::styled(
+                        String::from(*character),
+                        Style::default().fg(fg_color.inner().into_ext()).bg(bg_color
+                            .as_ref()
+                            .map(|val| val.inner().into_ext())
+                            .unwrap_or_default()),
+                    ),
+                    ColoringScheme::BackgroundOnly => Span::styled(
+                        String::from(*character),
+                        Style::default().bg(bg_color
+                            .as_ref()
+                            .map(|val| val.inner().into_ext())
+                            .unwrap_or_default()),
+                    ),
+                }
+            });
+            ret_vec.push(Line::from_iter(spans))
+        }
+        ret_vec
     }
     pub fn get_last_line(&self) -> i64 {
         i64::max(
@@ -248,13 +282,13 @@ impl<'a> IntoExt for &'a Vec<ColoredCharacter> {
                 Span::styled(
                     String::from(*character),
                     Style::default()
-                        .fg(fg_color.inner().clone().into_ext())
-                        .bg(bg_color.inner().clone().into_ext()),
+                        .fg((*fg_color.inner()).into_ext())
+                        .bg((*bg_color.inner()).into_ext()),
                 )
             } else {
                 Span::styled(
                     String::from(*character),
-                    Style::default().fg(fg_color.inner().clone().into_ext()),
+                    Style::default().fg((*fg_color.inner()).into_ext()),
                 )
             }
         });
@@ -267,18 +301,24 @@ impl Widget for &RatatuiApp {
     where
         Self: Sized,
     {
+        let block = Block::default();
         //TODO: convert to match self.state.mode
         if self.state.needs_processing() {
+            let shrunken_area = Rect::new(
+                area.x + 6,
+                area.y + 6,
+                (area.width - 4 * 3).clamp_min(1),
+                (area.height - 4 * 3).clamp_min(1),
+            );
             let pb = Gauge::default()
                 .block(Block::bordered().title("Processing Text"))
                 .gauge_style(Style::new().white().on_black().italic())
                 .percent(0);
-            pb.render(area, buf);
+            pb.render(shrunken_area, buf);
         } else {
             let processed_text = &self.state.text_state.processed_text;
-            let iter = processed_text.iter().map(|val| self.display_text(val));
-            let text = Text::from_iter(iter);
-            let block = Block::default();
+            let iter = self.display_text(processed_text);
+            let text = Text::from(iter);
             //(y,x), evil
             let offset = (
                 self.state
@@ -297,6 +337,26 @@ impl Widget for &RatatuiApp {
                 .wrap(self.state.display_state.wrap_mode)
                 .scroll(offset);
             para.render(area, buf);
+        }
+        if let KeyComboMode::Command(phase) = &self.state.display_state.key_state {
+            match phase {
+                CommandModePhase::Typing(text) => {
+                    let bottom_text = format!(":{text}");
+                    let para = Paragraph::new(bottom_text).style(Style::new().white().on_blue());
+                    let bottom_line = Rect::new(area.x, area.bottom() - 1, area.width, 1);
+                    para.render(bottom_line, buf);
+                }
+            }
+        }
+        if let Some(overlaying_message) = &self.state.display_state.overlaying_message {
+            let para = Paragraph::new(overlaying_message.as_str()); //.style(Style::new());
+            let notification_area = Rect::new(
+                area.x,
+                area.y,
+                (area.width - 3).clamp_min(1),
+                (area.height - 3).clamp_min(1),
+            );
+            para.render(notification_area, buf);
         }
     }
 }

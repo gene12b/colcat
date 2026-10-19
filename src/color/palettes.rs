@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -11,7 +12,7 @@ use crate::{
 
 //defines fg and background colors
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, JsonSchema)]
 pub enum ColorPalette {
     #[default]
     ///Default because it's everywhere.
@@ -153,8 +154,8 @@ impl ColorPalette {
 
             ColorPalette::ColorVec(color_stack) => Self::calc_color_idx(color_stack, idx),
             ColorPalette::PerCharacter {
-                char_map,
-                fallback_color,
+                char_map: _,
+                fallback_color: _,
             } => {
                 todo!(
                     "impl ColorPalette::colorize_idx for ColorPalette::PerCharacter... I have no idea how I will do this"

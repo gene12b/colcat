@@ -17,19 +17,48 @@ This app was inspired by `bat`.
 
 == Usage
 
+`cargo install colcat`
+
+if you want be able to use a sentence-transformer's model such as all-MiniLM-L6-v2 (https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) 
+in order to score and accordingly color sentences based on semantic similarity to a target phrase you provide use
+
+`cargo install colcat --features=semantics`
+
 All colors used are CSS colors, so when you're defining config colors they should be CSS parsable color text.
+
+If you add `--release` in addition you'le get a performance boost in addition to 
+
+`--generate-config-schema <.json Path>` will create a json schema listing all the possible types and
+values you need in order to completely customize the config.json you pass to colcat.
 
 TODO
 
 == TODO
 
+* Palettes todo:
 * Distinguish which color palettes are lacking red-green color-opponency for those who are red-green blind.
 ** Include palettes that have other forms of color blindness.
+** color palettes as files in a predefined "palettes" folder which can be imported as whitespace separated css-parsable strings
 * Animated-text color, size, etc, in order to increase saliency.
 * `tachyonfx::fx::translate_buf` for smooth scrolling under `animate` feature flag.
 * turn `process_text` into an async task/thread so that main thread isn't blocked and user
 is capable of quitting the program gracefully if it hangs for whatever reason
 * `pdf` feature to open a PDF file, colorize text, and save as a colorized PDF output file.
+* `docx` feature to open a docx file, colorize text, and save as a colorized docx output file.
 * `html` feature to open & colorize a text file, and render it as colorized text in an html file.
 * `webapp` feature to open & colorize a text file, and serve an interactive form of it as 
 a website on a local html server. Probably through leptos SSR.
+* a Chrome extension that converts rust into WASM that runs through extension javascript.
+** file picker to use config file and/or local model: https://github.com/fernandodilland/file-to-prompt
+* `--generate-default-config <.json Path>` to create a default config colcat normally uses if you
+don't provide a .json config file.
+* perhaps multiple fonts where the polynomials used to describe the font go down in order
+in correlation with saliency (i.e. low salient text looks like blobs/ellipses rather than
+clearly defined letters).
+* make use of 
+* Semantics todo:
+** semantic processing phrase overwrite for tui arg
+** add tui arg where you can elect to use a GPU for model inference
+* Async seems like a painful refactor with `ratatui`, I will shelf a functional async state and progress
+messaging system until I have the base features down. This may turn out to be a lot of work later down
+the road, but what matters most are the features. (https://github.com/ratatui/async-template/blob/main/ratatui-counter/src/app.rs)

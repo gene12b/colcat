@@ -10,9 +10,9 @@
 	    "palette": "Veridis"
 	},
 	    "semantic_model_info" : {
-		    "model_path": "PATH_TO_MODEL/all-MiniLM-L6-v2/pytorch_model.bin",
-		    "tokenizer_path": "PATH_TO_MODEL/all-MiniLM-L6-v2/tokenizer.json",
-		    "config_path": "PATH_TO_MODEL/all-MiniLM-L6-v2/config.json",
+		    "model_path": "../../Models/all-MiniLM-L6-v2/pytorch_model.bin",
+		    "tokenizer_path": "../../Models/all-MiniLM-L6-v2/tokenizer.json",
+		    "config_path": "../../Models/all-MiniLM-L6-v2/config.json",
 		    "target_text": [ "astrocytes use calcium" ]
 	    }
 }

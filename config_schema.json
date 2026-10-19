@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ColcatParamsSerde",
+  "type": "object",
+  "properties": {
+    "indexing": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IndexingScale"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "utf_render_mode": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/UtfRenderMode"
+      }
+    },
+    "word_coloring": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ColorParamsSerde"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "CharSet": {
+      "type": "string",
+      "enum": [
+        "AsciiUppercase",
+        "AsciiLowercase",
+        "AsciiDigits",
+        "AsciiPrintable",
+        "AsciiExtended",
+        "AsciiFull",
+        "Utf8"
+      ]
+    },
+    "ColorInterpolation": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "number",
+          "format": "float"
+        },
+        "target_color": {
+          "$ref": "#/$defs/ColorWrap"
+        }
+      },
+      "required": [
+        "amount",
+        "target_color"
+      ]
+    },
+    "ColorPalette": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "Veridis"
+          ]
+        },
+        {
+          "description": "Default because it's everywhere.",
+          "type": "string",
+          "const": "Monokai"
+        },
+        {
+          "description": "Maximum visual overload go: truly brutal on the eyes.\nOnly for the most insane speedreaders who want maximum\ninformation but can handle the mental exhaustion.",
+          "type": "string",
+          "const": "LinearRGB"
+        },
+        {
+          "description": "A special color dedicated to each character",
+          "type": "object",
+          "properties": {
+            "PerCharacter": {
+              "type": "object",
+              "properties": {
+                "char_map": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/$defs/ColorWrap"
+                  }
+                },
+                "fallback_color": {
+                  "description": "If character doesn't exist in char_map when rendering, what color\ndo you render it as?",
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/ColorWrap"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "char_map"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "PerCharacter"
+          ]
+        },
+        {
+          "description": "Will interpolate colors equidistantly between provided list of colors\nin the order they are provided.",
+          "type": "object",
+          "properties": {
+            "ColorVec": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ColorWrap"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "ColorVec"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Uniform": {
+              "$ref": "#/$defs/ColorWrap"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "Uniform"
+          ]
+        }
+      ]
+    },
+    "ColorParamsSerde": {
+      "type": "object",
+      "properties": {
+        "coloring_scheme": {
+          "$ref": "#/$defs/ColoringScheme"
+        },
+        "extra_interpolation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExtraInterpolationConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "linguistic_coloring": {
+          "$ref": "#/$defs/LinguisticColoring"
+        },
+        "palette": {
+          "$ref": "#/$defs/ColorPalette"
+        },
+        "word_coloring_kind": {
+          "$ref": "#/$defs/WordColoringKindSerde"
+        }
+      },
+      "required": [
+        "linguistic_coloring",
+        "word_coloring_kind",
+        "coloring_scheme",
+        "palette"
+      ]
+    },
+    "ColorWrap": {
+      "type": "css_color"
+    },
+    "ColoringScheme": {
+      "type": "string",
+      "enum": [
+        "ForegroundOnly",
+        "BackgroundOnly",
+        "ForegroundAndBackground"
+      ]
+    },
+    "Exclusivity": {
+      "type": "string",
+      "enum": [
+        "Repeat",
+        "Join"
+      ]
+    },
+    "ExtraInterpolationConfig": {
+      "type": "object",
+      "properties": {
+        "bg_interpolation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ColorInterpolation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fg_interpolation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ColorInterpolation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "IndexingScale": {
+      "description": "How should colors translate to numbered elements?\nTranslates into a series of numbers between 0.0 and 1.0\nwhere 0.0 is the beginning of the color palette and 1.0\nis the end",
+      "oneOf": [
+        {
+          "description": "the number that represents the char is the index for coloring",
+          "type": "string",
+          "const": "Linear"
+        }
+      ]
+    },
+    "LinguisticColoring": {
+      "oneOf": [
+        {
+          "description": "Morphology",
+          "type": "string",
+          "const": "Words"
+        },
+        {
+          "description": "Semantics",
+          "type": "object",
+          "properties": {
+            "Sentences": {
+              "type": "object",
+              "properties": {
+                "delimiter": {
+                  "type": "string",
+                  "maxLength": 1,
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "delimiter"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "Sentences"
+          ]
+        },
+        {
+          "description": "No linguistic element, all characters are treated the same",
+          "type": "string",
+          "const": "Characters"
+        }
+      ]
+    },
+    "UtfRenderMode": {
+      "description": "How do you want to map color palettes to\nthe character space provided?",
+      "type": "object",
+      "properties": {
+        "charset": {
+          "$ref": "#/$defs/CharSet"
+        },
+        "exclusivity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exclusivity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "charset"
+      ]
+    },
+    "WordColoringKindSerde": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "Average",
+            "Darkest",
+            "Brightest"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "Uniform": {
+              "$ref": "#/$defs/ColorWrap"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "Uniform"
+          ]
+        }
+      ]
+    }
+  }
+}

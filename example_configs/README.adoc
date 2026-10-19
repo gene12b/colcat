@@ -1,0 +1,6 @@
+= Example Configs
+
+== semantic_config.json
+
+shows how to use a transformer embedding model in order to color text
+based on semantic similarity.

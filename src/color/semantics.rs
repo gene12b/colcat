@@ -6,6 +6,7 @@ use candle_transformers::models::{
     mimi::candle::{Device, Tensor},
 };
 use itertools::Itertools;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokenizers::{Encoding, PaddingParams, Tokenizer};
 use tracing::debug;
@@ -26,6 +27,12 @@ pub struct SemanticsModel {
     //config_path: PathBuf,
 }
 
+impl SemanticsModel {
+    pub fn set_target_text(&mut self, text: String) {
+        self.target_text = vec![text];
+    }
+}
+
 impl Debug for SemanticsModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!(
@@ -35,7 +42,7 @@ impl Debug for SemanticsModel {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 pub struct SemanticsParamsSerde {
     model_path: PathBuf,
     tokenizer_path: PathBuf,
@@ -95,24 +102,8 @@ impl SemanticsModel {
         text: &str,
         split_mode: &LinguisticColoring,
     ) -> Result<Vec<ProcessedSemantics>, ColcatSemanticsError> {
-        let mut split_vals = match split_mode {
-            LinguisticColoring::Words => text
-                .split_whitespace()
-                .map(str::trim)
-                .map(|val| val.replace("\n", ""))
-                .filter(|val| !val.is_empty())
-                //.map(str::to_string)
-                .collect_vec(),
-            LinguisticColoring::Sentences { delimiter } => text
-                .split(*delimiter)
-                .map(str::trim)
-                .map(|val| val.replace("\n", ""))
-                .filter(|val| !val.is_empty())
-                //.map(str::to_string)
-                .collect_vec(),
-            //why would you do this? Whatever, it's possible
-            LinguisticColoring::Characters => text.chars().map(String::from).collect_vec(),
-        };
+        let mut split_vals = split_mode.split_text(text.to_string());
+        //println!("split_vals: {split_vals:?}");
         let input_num_sentences = split_vals.len();
         debug!("input_num_sentences: {input_num_sentences}");
         let mut target_text = self.target_text.clean_text();
@@ -138,7 +129,6 @@ impl SemanticsModel {
         debug!("attention_mask: {attention_mask:?}");
 
         let token_id_stack = Tensor::stack(&token_ids, 0)?;
-
         let attention_mask = Tensor::stack(&attention_mask, 0)?;
 
         let token_type_ids = token_id_stack.zeros_like()?;
@@ -151,7 +141,7 @@ impl SemanticsModel {
         let args_include_padding_embeddings = true;
         //pooling
         let embeddings = if args_include_padding_embeddings {
-            let (num_sentences, num_tokens, hidden_size) = embeddings.dims3()?;
+            let (_num_sentences, num_tokens, _hidden_size) = embeddings.dims3()?;
             (embeddings.sum(1)? / (num_tokens as f64))?
         } else {
             //sentence transformers behavior
