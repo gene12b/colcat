@@ -1,6 +1,6 @@
 = colcat
 
-Colored-concatenate (colcat) is essentially a human language language server protocol (LSP). The goal of colcat
+Colored-concatenate (colcat) is essentially a natural-language language server protocol (LSP). The goal of colcat
 is to provide visual cues that can make reading human languages easier by (at the base level) modifying the 
 text coloring and (in more capable text viewers) modifying the font style, background color, size, orientation, and
 other such percievable visual properties. The underlying concept is to improve the _saliency_ of the text, which
