@@ -62,3 +62,4 @@ clearly defined letters).
 * Async seems like a painful refactor with `ratatui`, I will shelf a functional async state and progress
 messaging system until I have the base features down. This may turn out to be a lot of work later down
 the road, but what matters most are the features. (https://github.com/ratatui/async-template/blob/main/ratatui-counter/src/app.rs)
+* Documentation in book.

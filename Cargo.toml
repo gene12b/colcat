@@ -2,6 +2,11 @@
 name = "colcat"
 version = "0.2.0"
 edition = "2024"
+description = "Text colorization tool for reading"
+license = "MIT"
+readme = "README.adoc"
+repository = "https://github.com/gene12b/colcat"
+
 
 [dependencies]
 clap = { version = "4.6.6", features = ["derive"] }
